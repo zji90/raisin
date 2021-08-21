@@ -14,6 +14,13 @@ if (!require("devtools"))
   install.packages("devtools")
 devtools::install_github("zji90/raisin")
 ```
+
+## Vignette
+
+Please see:
+
+https://github.com/zji90/raisin/blob/main/vignettes/raisin.pdf
+
 ## Contact the Author
 Author: Zhicheng Ji, Wenpin Hou, Hongkai Ji
 
