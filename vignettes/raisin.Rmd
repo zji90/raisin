@@ -1,0 +1,105 @@
+---
+title: "RAISIN: Regression Analysis in Single-cell RNA-Seq with multiple samples"
+output: pdf_document
+author:
+  - Zhicheng Ji, Department of Biostatistics and Bioinformatics, Duke University School of Medicine
+  - Wenpin Hou, Department of Biostatistics, Johns Hopkins Bloomberg School of Public Health
+  - Hongkai Ji, Department of Biostatistics, Johns Hopkins Bloomberg School of Public Health
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introductions
+
+RAISIN is a software tool to perform Regression Analysis In SINgle-cell RNA-seq datasets with multiple samples. RAISIN performs DE analysis using a flexible mixed effects regression framework that accounts for both sample-level and cell- level variances (Fig. 1a). The classical linear mixed effects model (LMM) do not consider small sample size or small cell number in rare cell populations, which are common in scRNA-seq studies and can lead to poor variance estimation and reduced statistical power. Fitting mixed effects models to large datasets consisting of many samples and millions of cells is also computationally challenging. To address these issues, RAISIN combines the mixed model with a hierarchical model to regularize variances, and a new model fitting algorithm is developed to efficiently handle large datasets. RAISIN can be applied to identify differential cell type proportions, differential gene expression between cell types, and differential gene expression between sample groups within each cell type.
+
+## Data loading and exploration
+
+We demonstrate the functions of RAISIN using a small dataset, which is a subset of a single-cell RNA-seq dataset measuring the gene expression profiles of PBMC cells in 2 COVID-19 patients and 2 healthy donors collected from Lee et al. Science Immunology, 2020. The dataset is in the format of a Seurat object. We first read in the dataset and visualize the cell clusters on the umap.
+
+```{r}
+library(raisin)
+library(Seurat)
+# read in the seurat object
+d <- readRDS(paste0(system.file('data',package = 'raisin'),'/exampledata.rds'))
+DimPlot(d)
+```
+
+There are three clusters. To identify the potential cell types, we visualize the expression of marker genes
+
+```{r}
+FeaturePlot(d,c('CD3D','MS4A1','CD14'))
+```
+
+Cluster 0 has high expression in CD14 and likely consists of monocytes. Cluster 1 has high expression in CD3D and likely consists of T cells. Cluster 2 has high expression in MS4A1 and likely consists of B cells.
+
+We used the following code to extract the log normalized gene expression matrix, the cell clustering assignments, the individual information from which cells are collected, and the umap coordinates. We paste the cluster and individual together to form a 'sample' variable, which indicates a group of cell with same cell cluster and from the same individual. Note that if imputed gene expression matrix (e.g., imputed by SAVER) is available, it is recommended to be used.
+
+```{r}
+mat <- d$RNA@data
+cluster <- Idents(d)
+individual <- sub('_.*','',colnames(mat))
+sample <- paste0(cluster,'_',individual)
+umap <- d$umap@cell.embeddings
+```
+
+Here H1 and H2 are two healthy donors, and S1 and S2 are two COVID-19 patients with severe symptoms.
+
+## Cell type proportion test
+
+The first analysis is to test if different groups of individuals have enriched cell types. For example, if COVID-19 patients have a higher proportion of certain cell types. The test needs the cluster of each cell (cluster), the individual from which each cell is collected (individual), and a design matrix (design). The design matrix should be a numeric matrix with row names being the unique values of individuals. The 'proportiontest' function is used to perform the test.
+
+```{r}
+# make the design
+design <- data.frame(intercept=1,contrast=c(0,0,1,1),row.names = c('H1','H2','S1','S2'))
+# run the test
+proportiontest(cluster,individual,design)
+```
+
+The result of 'proportiontest' is a data.frame. Each row is a cluster. Although none of the cluster shows significant results most probably due to small sample size, there is a trend of enriched B cells and monocytes in COVID patients and enriched T cells in healthy donors.
+
+## Differential genes between two cell types
+
+The second analysis is to identify differential genes between two cell types, cell clusters, or groups of cells using a paired differential test. Here we take the cluster 0 and 1 as example and identify the differential genes between the two clusters. We use the paired test since each individual has cells in both clusters. The input is the gene expression matrix, a vector indicating which sample (here is a combination of cell type and individual) each cell comes from, and a design. The design has three columns: sample, individual, and feature.
+
+```{r}
+# subset the cells in cluster 0 and 1
+cellid <- which(cluster %in% c(0,1))
+# make the design matrix.
+design <- data.frame(sample=unique(sample[cellid]),individual=sub('.*_','',unique(sample[cellid])),feature=sub('_.*','',unique(sample[cellid])),stringsAsFactors = F)
+# run the test
+head(raisintest(raisinfit(mat[,cellid],sample[cellid],testtype = 'paired',design=design)))
+```
+
+The output is a data.frame. The columns are (log) fold change, statistics, p-value and FDR. Each row is a gene ordered by its p-value.
+
+One common task is to identify the marker genes in each cluster. This can be easily done using the function 'findmarker'. It will iteratively go through each cluster, and compare the cells within and outside the cluster.
+
+```{r}
+# run the findmarker function
+marker <- findmarker(as.matrix(mat),individual,cluster)
+# marker for the first cluster '0'
+names(marker)
+head(marker[[1]])
+```
+
+The result is a list. Each element corresponds to a cluster. Genes are ordered based on the log fold change.
+
+## Differential genes between two groups of samples within each cluster
+
+The third analysis is to identify differential genes within each cell cluster between two groups of samples, such as COVID patients and healthy donors. Here we want to identify the differential genes between COVID and healthy in cluster 0. We use unpaired test in this case. The input is similar as before, with the difference that the column 'individual' is not included in the design.
+
+```{r}
+cellid <- which(cluster == 0)
+design <- data.frame(sample=unique(sample[cellid]),feature=sub('[1-9]$','',sub('.*_','',unique(sample[cellid]))),stringsAsFactors = F)
+head(raisintest(raisinfit(mat[,cellid],sample[cellid],testtype = 'unpaired',design=design)))
+```
+
+The output is similar as before.
+
+## Session Info
+```{r}
+sessionInfo()
+```

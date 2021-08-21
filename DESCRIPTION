@@ -1,0 +1,17 @@
+Package: raisin
+Type: Package
+Title: Regression Analysis in Single-cell RNA-Seq with multiple samples
+Version: 1.0
+Date: 2021-08-21
+Author: Zhicheng Ji, Wenpin Hou, Hongkai Ji
+Maintainer: Zhicheng Ji <zhicheng.ji@duke.edu>
+Description: Regression Analysis in Single-cell RNA-Seq with multiple samples
+Encoding: UTF-8
+License: MIT
+VignetteBuilder: knitr
+Imports: limma, parallel, statmod, Matrix, reshape2
+Suggests: knitr, rmarkdown, markdown, Seurat, ggplot2
+Depends: R (>= 3.5.0)
+RoxygenNote: 7.1.1
+NeedsCompilation: no
+Packaged: 2021-08-21 21:19:13 UTC; wenpinhou
