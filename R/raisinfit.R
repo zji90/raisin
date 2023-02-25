@@ -205,7 +205,7 @@ raisinfit <- function(expr,sample,testtype,design,intercept=TRUE,filtergene=FALS
       
       for (sg in donegroup) {
         KZmat <- K %*% Z[lid,group==sg,drop=F] %*% t(Z[lid,group==sg,drop=F]) %*% t(K)
-        tmp <- sapply(1:nrow(w),function(rid) diag(sigma2[,sg][i] * KZmat))
+        tmp <- sapply(1:nrow(w),function(rid) diag(sigma2[rid,sg] * KZmat))
         if (is.vector(tmp)) tmp <- matrix(tmp,nrow=1)
         rl <- rl + t(tmp)
       }
