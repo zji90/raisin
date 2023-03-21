@@ -273,9 +273,9 @@ raisinfit <- function(expr,sample,testtype,design,intercept=TRUE,filtergene=FALS
   tmpcontrolgroup <- colnames(sigma2)
   tmpdonegroup <- NULL
   npara <- sapply(colnames(sigma2),function(ug) {
-    sum(rowSums(Z[,group==ug,drop=F] > 0) > 0)
+    sum(Z[,group==ug,drop=F] != 0)
   })
-  for (ug in names(sort(npara))) {
+  for (ug in names(sort(npara,decreasing=T))) {
     print(paste0("Estimating sigma2 for group: ",ug))
     sigma2[,ug] <- sigma2func(ug,setdiff(tmpcontrolgroup,ug),tmpdonegroup)
     tmpcontrolgroup <- setdiff(tmpcontrolgroup,ug)
